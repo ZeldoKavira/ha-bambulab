@@ -68,6 +68,7 @@ PRINT_PROJECT_FILE_TEMPLATE = {
         "layer_inspect": True,
         "use_ams": False,
         "ams_mapping": [0],
+        "skip_objects": None,
 
         "subtask_name": "",
         "profile_id": "0",

@@ -595,6 +595,8 @@ class BambuClient:
                 if self._watchdog is not None:
                     self._watchdog.received_data()
                 if json_data.get("print"):
+                    if json_data["print"].get("command") == "project_file":
+                        LOGGER.info(f"project_file response: {json.dumps(json_data['print'])}")
                     self._device.print_update(data=json_data.get("print"))
                     if json_data.get("print").get("msg", 0) == 0:
                         self._refreshed= False

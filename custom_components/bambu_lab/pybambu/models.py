@@ -863,6 +863,7 @@ class PrintJob:
     _ftpRunAgain: bool
     _ftpThread: threading.Thread
     _ftp_download_percentage: int
+    _plate_number: int
 
     def __init__(self, client):
         self._client = client
@@ -892,6 +893,7 @@ class PrintJob:
         self._ftpRunAgain = False
         self._ftpThread = None
         self._ftp_download_percentage = 100
+        self._plate_number = 1
 
     @property
     def model_download_percentage(self) -> int:
@@ -992,6 +994,15 @@ class PrintJob:
         self.total_layers = data.get("total_layer_num", self.total_layers)
         self.ams_mapping = data.get("ams_mapping", self.ams_mapping)
         self._skipped_objects = data.get("s_obj", self._skipped_objects)
+
+        # Capture plate number from project_file command response
+        if data.get("command") == "project_file":
+            param = data.get("param", "")
+            # param is e.g. "Metadata/plate_1.gcode"
+            m = re.search(r'plate_(\d+)', param)
+            if m:
+                self._plate_number = int(m.group(1))
+                LOGGER.debug(f"Plate number set to {self._plate_number} from project_file response")
 
         # Initialize task data at startup.
         if previous_gcode_state == "unknown" and self.gcode_state != "unknown":
@@ -1631,8 +1642,14 @@ class PrintJob:
 
             # Open the 3mf zip archive
             with ZipFile(model_file_path) as archive:
-                # Extract the slicer XML config and parse the plate tree
-                plate = ElementTree.fromstring(archive.read('Metadata/slice_info.config')).find('plate')
+                # Extract the slicer XML config and parse the correct plate tree
+                plates = ElementTree.fromstring(archive.read('Metadata/slice_info.config')).findall('plate')
+                plate = plates[0]
+                for p in plates:
+                    for meta in p:
+                        if meta.get('key') == 'index' and meta.get('value') == str(self._plate_number):
+                            plate = p
+                            break
                 
                 # Iterate through each config element and extract the data
                 # Example contents:
